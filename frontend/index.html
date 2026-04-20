@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Expense Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Design tokens ──────────────────────────────────────────────────── */
+    :root {
+      --ink:        #1a1a1a;
+      --ink-muted:  #6b6b6b;
+      --ink-faint:  #b0b0b0;
+      --paper:      #f7f5f0;
+      --surface:    #ffffff;
+      --rule:       #e8e4dc;
+      --accent:     #2d6a4f;
+      --accent-lt:  #d8f3dc;
+      --danger:     #c0392b;
+      --danger-lt:  #fdecea;
+      --warning:    #e67e22;
+      --radius:     10px;
+      --shadow:     0 2px 12px rgba(0,0,0,.07);
+      --shadow-lg:  0 8px 32px rgba(0,0,0,.10);
+      --font-body:  'DM Sans', sans-serif;
+      --font-serif: 'DM Serif Display', serif;
+      --font-mono:  'DM Mono', monospace;
+      --transition: 180ms ease;
+    }
+
+    /* ── Reset ──────────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+    body {
+      font-family: var(--font-body);
+      background: var(--paper);
+      color: var(--ink);
+      min-height: 100vh;
+    }
+
+    /* ── Layout ─────────────────────────────────────────────────────────── */
+    .app-shell {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      grid-template-rows: auto 1fr;
+      min-height: 100vh;
+    }
+    header {
+      grid-column: 1 / -1;
+      background: var(--ink);
+      color: #fff;
+      padding: 20px 36px;
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+    }
+    header h1 {
+      font-family: var(--font-serif);
+      font-size: 1.75rem;
+      font-weight: 400;
+      letter-spacing: -.3px;
+    }
+    header .tagline {
+      font-size: .8rem;
+      color: rgba(255,255,255,.5);
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    /* ── Sidebar (form) ─────────────────────────────────────────────────── */
+    .sidebar {
+      background: var(--surface);
+      border-right: 1px solid var(--rule);
+      padding: 32px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+      position: sticky;
+      top: 0;
+      height: calc(100vh - 65px);
+      overflow-y: auto;
+    }
+    .sidebar h2 {
+      font-family: var(--font-serif);
+      font-size: 1.25rem;
+      font-weight: 400;
+    }
+
+    /* ── Form ───────────────────────────────────────────────────────────── */
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label {
+      font-size: .75rem;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--ink-muted);
+    }
+    .form-group input,
+    .form-group select {
+      font-family: var(--font-body);
+      font-size: .95rem;
+      padding: 10px 13px;
+      border: 1.5px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--paper);
+      color: var(--ink);
+      transition: border-color var(--transition), box-shadow var(--transition);
+      outline: none;
+      width: 100%;
+    }
+    .form-group input:focus,
+    .form-group select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(45,106,79,.12);
+    }
+    .form-group input.error { border-color: var(--danger); }
+    .field-error {
+      font-size: .75rem;
+      color: var(--danger);
+      display: none;
+    }
+    .field-error.visible { display: block; }
+
+    /* Amount prefix */
+    .amount-wrap { position: relative; }
+    .amount-wrap .prefix {
+      position: absolute;
+      left: 13px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--ink-muted);
+      font-weight: 600;
+      pointer-events: none;
+    }
+    .amount-wrap input { padding-left: 28px; }
+
+    /* Category pills */
+    .cat-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+    .cat-pill {
+      font-size: .75rem;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1.5px solid var(--rule);
+      background: transparent;
+      color: var(--ink-muted);
+      cursor: pointer;
+      transition: all var(--transition);
+      font-family: var(--font-body);
+    }
+    .cat-pill:hover { border-color: var(--accent); color: var(--accent); }
+    .cat-pill.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    /* Submit button */
+    .btn-submit {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 13px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-family: var(--font-body);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background var(--transition), transform var(--transition), opacity var(--transition);
+    }
+    .btn-submit:hover:not(:disabled) { background: #245c43; transform: translateY(-1px); }
+    .btn-submit:active:not(:disabled) { transform: translateY(0); }
+    .btn-submit:disabled { opacity: .6; cursor: not-allowed; }
+    .btn-submit .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      display: none;
+    }
+    .btn-submit.loading .spinner { display: block; }
+    .btn-submit.loading .btn-label { display: none; }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      padding: 12px 22px;
+      border-radius: 999px;
+      font-size: .9rem;
+      font-weight: 500;
+      opacity: 0;
+      transition: all .3s ease;
+      pointer-events: none;
+      z-index: 999;
+      white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #toast.success { background: var(--ink); color: #fff; }
+    #toast.error   { background: var(--danger); color: #fff; }
+
+    /* ── Main content ───────────────────────────────────────────────────── */
+    .main {
+      padding: 32px 36px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      overflow-y: auto;
+    }
+
+    /* Controls bar */
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .controls select {
+      font-family: var(--font-body);
+      font-size: .875rem;
+      padding: 8px 12px;
+      border: 1.5px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--ink);
+      cursor: pointer;
+      outline: none;
+      transition: border-color var(--transition);
+    }
+    .controls select:focus { border-color: var(--accent); }
+    .controls .spacer { flex: 1; }
+
+    /* Total chip */
+    .total-chip {
+      background: var(--accent-lt);
+      color: var(--accent);
+      font-weight: 700;
+      font-family: var(--font-mono);
+      font-size: .95rem;
+      padding: 8px 16px;
+      border-radius: 999px;
+      letter-spacing: -.3px;
+    }
+
+    /* Clear filter */
+    .btn-clear {
+      font-size: .8rem;
+      color: var(--ink-muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      text-decoration: underline;
+      padding: 0;
+    }
+    .btn-clear:hover { color: var(--ink); }
+
+    /* Summary by category */
+    .summary-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .summary-card {
+      background: var(--surface);
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      padding: 12px 18px;
+      min-width: 140px;
+      animation: fadeIn .25s ease;
+    }
+    .summary-card .s-cat {
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--ink-muted);
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .summary-card .s-amt {
+      font-family: var(--font-mono);
+      font-size: 1.05rem;
+      font-weight: 500;
+      color: var(--ink);
+    }
+
+    /* Expense table */
+    .table-wrap {
+      background: var(--surface);
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .9rem;
+    }
+    thead th {
+      text-align: left;
+      padding: 14px 18px;
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--ink-muted);
+      border-bottom: 1px solid var(--rule);
+      background: var(--paper);
+    }
+    tbody tr {
+      border-bottom: 1px solid var(--rule);
+      transition: background var(--transition);
+      animation: fadeIn .2s ease;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--paper); }
+    tbody td {
+      padding: 14px 18px;
+      vertical-align: middle;
+    }
+    .td-amount {
+      font-family: var(--font-mono);
+      font-weight: 500;
+      color: var(--ink);
+      white-space: nowrap;
+    }
+    .td-date {
+      color: var(--ink-muted);
+      font-size: .82rem;
+      white-space: nowrap;
+    }
+    .td-desc {
+      color: var(--ink-muted);
+      font-size: .85rem;
+      max-width: 240px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Category badge */
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: .72rem;
+      font-weight: 600;
+      letter-spacing: .03em;
+      white-space: nowrap;
+    }
+
+    /* Empty / loading states */
+    .state-box {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--ink-faint);
+    }
+    .state-box .icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .state-box p { font-size: .95rem; }
+
+    .skeleton { animation: pulse 1.4s ease-in-out infinite; }
+    .sk-row td { padding: 14px 18px; }
+    .sk-bar {
+      height: 14px;
+      border-radius: 4px;
+      background: var(--rule);
+    }
+
+    /* Animations */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .app-shell {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto 1fr;
+      }
+      .sidebar {
+        position: static;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--rule);
+      }
+      .main { padding: 20px 16px; }
+      header { padding: 16px 20px; }
+      thead th:nth-child(4), tbody td:nth-child(4) { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-shell">
+  <!-- ── Header ───────────────────────────────────────────────────────── -->
+  <header>
+    <b><span class="tagline">Personal Expense Tracker</span></b>
+  </header>
+
+  <!-- ── Sidebar / Form ───────────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <h2>New Expense</h2>
+
+    <form id="expense-form" novalidate>
+      <!-- Amount -->
+      <div class="form-group">
+        <label for="amount">Amount</label>
+        <div class="amount-wrap">
+          <span class="prefix">₹</span>
+          <input type="number" id="amount" name="amount"
+                 placeholder="0.00" step="0.01" min="0.01" autocomplete="off" />
+        </div>
+        <span class="field-error" id="amount-err">Enter a valid amount greater than ₹0</span>
+      </div>
+
+      <!-- Category pills + free-text -->
+      <div class="form-group">
+        <label>Category</label>
+        <div class="cat-pills" id="cat-pills">
+          <button type="button" class="cat-pill" data-cat="Food & Dining">🍽 Food</button>
+          <button type="button" class="cat-pill" data-cat="Transport">🚌 Transport</button>
+          <button type="button" class="cat-pill" data-cat="Shopping">🛍 Shopping</button>
+          <button type="button" class="cat-pill" data-cat="Utilities">💡 Utilities</button>
+          <button type="button" class="cat-pill" data-cat="Health">💊 Health</button>
+          <button type="button" class="cat-pill" data-cat="Entertainment">🎬 Entertainment</button>
+          <button type="button" class="cat-pill" data-cat="Rent">🏠 Rent</button>
+          <button type="button" class="cat-pill" data-cat="Other">📦 Other</button>
+        </div>
+        <input type="text" id="category" name="category"
+               placeholder="Or type a custom category…" autocomplete="off" />
+        <span class="field-error" id="category-err">Please enter or select a category</span>
+      </div>
+
+      <!-- Description -->
+      <div class="form-group">
+        <label for="description">Description</label>
+        <input type="text" id="description" name="description"
+               placeholder="What was this for?" autocomplete="off" />
+        <span class="field-error" id="description-err">Please add a description</span>
+      </div>
+
+      <!-- Date -->
+      <div class="form-group">
+        <label for="date">Date</label>
+        <input type="date" id="date" name="date" />
+        <span class="field-error" id="date-err">Please select a date</span>
+      </div>
+
+      <button type="submit" class="btn-submit" id="submit-btn">
+        <span class="btn-label">Add Expense</span>
+        <span class="spinner"></span>
+      </button>
+    </form>
+  </aside>
+
+  <!-- ── Main ─────────────────────────────────────────────────────────── -->
+  <main class="main">
+    <!-- Controls -->
+    <div class="controls">
+      <select id="filter-cat">
+        <option value="">All Categories</option>
+      </select>
+      <select id="sort-select">
+        <option value="">Default order</option>
+        <option value="date_desc">Newest first</option>
+      </select>
+      <button class="btn-clear" id="clear-filters" style="display:none">Clear filters</button>
+      <span class="spacer"></span>
+      <span class="total-chip" id="total-chip">Total: ₹—</span>
+    </div>
+
+    <!-- Summary by category -->
+    <div class="summary-grid" id="summary-grid"></div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Category</th>
+            <th>Description</th>
+            <th>Added</th>
+            <th style="text-align:right">Amount</th>
+          </tr>
+        </thead>
+        <tbody id="expense-tbody">
+          <!-- Populated by JS -->
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── Config ────────────────────────────────────────────────────────────────
+// Change this to your deployed backend URL before publishing
+const API_BASE = window.ENV_API_BASE || 'http://localhost:8000';
+
+// ── State ─────────────────────────────────────────────────────────────────
+let submitting = false;     // guard against double-submit
+let expenses   = [];
+let filterCat  = '';
+let sortMode   = '';
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function fmtMoney(val) {
+  return '₹' + Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fmtDate(iso) {
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+function fmtDatetime(iso) {
+  return new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+// Deterministic pastel from category string
+const PALETTE = [
+  ['#dbeafe','#1e40af'], ['#dcfce7','#166534'], ['#fef9c3','#854d0e'],
+  ['#fce7f3','#9d174d'], ['#ede9fe','#5b21b6'], ['#ffedd5','#9a3412'],
+  ['#e0f2fe','#0c4a6e'], ['#f1f5f9','#334155'],
+];
+function catColor(cat) {
+  let h = 0;
+  for (let c of cat) h = (h * 31 + c.charCodeAt(0)) & 0xffff;
+  return PALETTE[h % PALETTE.length];
+}
+
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `show ${type}`;
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.className = ''; }, 3200);
+}
+
+// ── Idempotency key ───────────────────────────────────────────────────────
+// Generated once per form-load, so retries reuse the same key
+let currentIdemKey = crypto.randomUUID();
+function refreshIdemKey() { currentIdemKey = crypto.randomUUID(); }
+
+// ── API calls ─────────────────────────────────────────────────────────────
+async function fetchExpenses() {
+  const params = new URLSearchParams();
+  if (filterCat) params.set('category', filterCat);
+  if (sortMode)  params.set('sort', sortMode);
+  const url = `${API_BASE}/expenses${params.size ? '?' + params : ''}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function postExpense(payload) {
+  const res = await fetch(`${API_BASE}/expenses`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    // FastAPI validation errors
+    const detail = data.detail;
+    if (Array.isArray(detail)) throw new Error(detail[0].msg);
+    throw new Error(typeof detail === 'string' ? detail : 'Something went wrong');
+  }
+  return data;
+}
+
+// ── Render ────────────────────────────────────────────────────────────────
+function renderSkeleton() {
+  const tbody = document.getElementById('expense-tbody');
+  tbody.innerHTML = Array(4).fill(0).map(() => `
+    <tr class="sk-row skeleton">
+      <td><div class="sk-bar" style="width:80px"></div></td>
+      <td><div class="sk-bar" style="width:90px"></div></td>
+      <td><div class="sk-bar" style="width:160px"></div></td>
+      <td><div class="sk-bar" style="width:110px"></div></td>
+      <td><div class="sk-bar" style="width:70px;margin-left:auto"></div></td>
+    </tr>`).join('');
+}
+
+function renderExpenses(data) {
+  expenses = data.expenses;
+
+  // Total
+  document.getElementById('total-chip').textContent =
+    'Total: ' + fmtMoney(data.total);
+
+  // Category filter dropdown
+  const sel = document.getElementById('filter-cat');
+  const prev = sel.value;
+  // Rebuild options from current list
+  const cats = [...new Set(expenses.map(e => e.category))].sort();
+  sel.innerHTML = '<option value="">All Categories</option>' +
+    cats.map(c => `<option value="${c}"${c === prev ? ' selected' : ''}>${c}</option>`).join('');
+  if (prev) sel.value = prev;
+
+  // Category summary chips
+  const summary = {};
+  expenses.forEach(e => {
+    summary[e.category] = (summary[e.category] || 0) + Number(e.amount);
+  });
+  const sg = document.getElementById('summary-grid');
+  sg.innerHTML = Object.entries(summary)
+    .sort((a, b) => b[1] - a[1])
+    .map(([cat, total]) => {
+      const [bg, fg] = catColor(cat);
+      return `<div class="summary-card">
+        <div class="s-cat">${cat}</div>
+        <div class="s-amt" style="color:${fg}">${fmtMoney(total)}</div>
+      </div>`;
+    }).join('');
+
+  // Table rows
+  const tbody = document.getElementById('expense-tbody');
+  if (expenses.length === 0) {
+    tbody.innerHTML = `
+      <tr><td colspan="5">
+        <div class="state-box">
+          <div class="icon">📭</div>
+          <p>No expenses yet${filterCat ? ' for this category' : ''}.</p>
+        </div>
+      </td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = expenses.map(e => {
+    const [bg, fg] = catColor(e.category);
+    return `<tr>
+      <td class="td-date">${fmtDate(e.date)}</td>
+      <td><span class="badge" style="background:${bg};color:${fg}">${e.category}</span></td>
+      <td class="td-desc" title="${e.description.replace(/"/g,'&quot;')}">${e.description}</td>
+      <td class="td-date">${fmtDatetime(e.created_at)}</td>
+      <td class="td-amount" style="text-align:right">${fmtMoney(e.amount)}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function loadExpenses() {
+  renderSkeleton();
+  try {
+    const data = await fetchExpenses();
+    renderExpenses(data);
+  } catch (err) {
+    document.getElementById('expense-tbody').innerHTML = `
+      <tr><td colspan="5">
+        <div class="state-box">
+          <div class="icon">⚠️</div>
+          <p>Couldn't load expenses. Is the backend running?</p>
+        </div>
+      </td></tr>`;
+    console.error(err);
+  }
+}
+
+// ── Form validation ───────────────────────────────────────────────────────
+function showErr(field, show) {
+  const input = document.getElementById(field);
+  const err   = document.getElementById(field + '-err');
+  if (!input || !err) return;
+  input.classList.toggle('error', show);
+  err.classList.toggle('visible', show);
+}
+
+function validate() {
+  let ok = true;
+  const amount = parseFloat(document.getElementById('amount').value);
+  if (!amount || amount <= 0 || isNaN(amount)) { showErr('amount', true); ok = false; } else showErr('amount', false);
+
+  const cat = document.getElementById('category').value.trim();
+  if (!cat) { showErr('category', true); ok = false; } else showErr('category', false);
+
+  const desc = document.getElementById('description').value.trim();
+  if (!desc) { showErr('description', true); ok = false; } else showErr('description', false);
+
+  const date = document.getElementById('date').value;
+  if (!date) { showErr('date', true); ok = false; } else showErr('date', false);
+
+  return ok;
+}
+
+// ── Form submit ───────────────────────────────────────────────────────────
+document.getElementById('expense-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  if (submitting) return;        // hard guard against double-click
+  if (!validate()) return;
+
+  submitting = true;
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.classList.add('loading');
+
+  const payload = {
+    idempotency_key: currentIdemKey,   // stable for retries, refreshed on success
+    amount:      parseFloat(document.getElementById('amount').value).toFixed(2),
+    category:    document.getElementById('category').value.trim(),
+    description: document.getElementById('description').value.trim(),
+    date:        document.getElementById('date').value,
+  };
+
+  try {
+    await postExpense(payload);
+    showToast('Expense added ✓');
+
+    // Reset form
+    document.getElementById('expense-form').reset();
+    document.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('active'));
+    refreshIdemKey();   // new key for next submission
+
+    // Refresh list
+    await loadExpenses();
+  } catch (err) {
+    showToast(err.message || 'Failed to add expense', 'error');
+    // Keep idempotency key — user can safely retry
+  } finally {
+    submitting = false;
+    btn.disabled = false;
+    btn.classList.remove('loading');
+  }
+});
+
+// ── Category pills ────────────────────────────────────────────────────────
+document.getElementById('cat-pills').addEventListener('click', e => {
+  const pill = e.target.closest('.cat-pill');
+  if (!pill) return;
+  document.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('active'));
+  pill.classList.add('active');
+  document.getElementById('category').value = pill.dataset.cat;
+  showErr('category', false);
+});
+
+// ── Filters ───────────────────────────────────────────────────────────────
+document.getElementById('filter-cat').addEventListener('change', e => {
+  filterCat = e.target.value;
+  updateClearBtn();
+  loadExpenses();
+});
+document.getElementById('sort-select').addEventListener('change', e => {
+  sortMode = e.target.value;
+  updateClearBtn();
+  loadExpenses();
+});
+document.getElementById('clear-filters').addEventListener('click', () => {
+  filterCat = '';
+  sortMode  = '';
+  document.getElementById('filter-cat').value  = '';
+  document.getElementById('sort-select').value = '';
+  updateClearBtn();
+  loadExpenses();
+});
+function updateClearBtn() {
+  document.getElementById('clear-filters').style.display =
+    (filterCat || sortMode) ? 'inline' : 'none';
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+// Set default date to today
+document.getElementById('date').valueAsDate = new Date();
+
+loadExpenses();
+</script>
+</body>
+</html>
