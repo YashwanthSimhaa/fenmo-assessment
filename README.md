@@ -19,7 +19,6 @@ uvicorn main:app --reload
 
 # Frontend
 # Open frontend/index.html in a browser, or serve it:
-cd frontend
 python -m http.server 3000
 # → http://localhost:3000
 
